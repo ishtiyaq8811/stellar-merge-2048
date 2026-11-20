@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stellar Merge 2048 - Cosmic Tile Fusion</title>
+  <style>
+    :root {
+      --bg-dark: #0a0b16;
+      --card-bg: rgba(22, 27, 46, 0.75);
+      --card-border: rgba(99, 102, 241, 0.25);
+      --accent-cyan: #06b6d4;
+      --accent-purple: #8b5cf6;
+      --accent-pink: #ec4899;
+      --accent-gold: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --grid-bg: rgba(15, 23, 42, 0.85);
+      --cell-bg: rgba(30, 41, 59, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0a0b16 70%, #030712 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
+
+    /* Ambient Cosmic Dust Canvas */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Header & Score Cards */
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .logo-box h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #38bdf8 0%, #c084fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .logo-box p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .scores-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .score-badge {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 6px 14px;
+      min-width: 80px;
+      text-align: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    .score-badge .label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.75px;
+      color: var(--text-muted);
+    }
+
+    .score-badge .val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .score-badge.best .val {
+      color: var(--accent-gold);
+    }
+
+    /* Action Bar */
+    .controls-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      border: none;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+    }
+
+    /* Game Board Grid */
+    .grid-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: var(--grid-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 18px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(99, 102, 241, 0.1);
+      touch-action: none;
+    }
+
+    .grid-cell {
+      background: var(--cell-bg);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Tile Canvas / Dynamic Tile Container */
+    .tile-container {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      pointer-events: none;
+    }
+
+    .tile {
+      position: absolute;
+      width: calc((100% - 30px) / 4);
+      height: calc((100% - 30px) / 4);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      transition: transform 0.13s ease-in-out, opacity 0.13s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      will-change: transform;
+    }
+
+    .tile .tile-icon {
+      font-size: 1.15rem;
+      line-height: 1;
+      margin-bottom: 2px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
+
+    .tile .tile-val {
+      font-size: 1.25rem;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .tile .tile-name {
+      font-size: 0.55rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    /* Tile Colors & Celestial Themes */
+    .tile-2 {
+      background: linear-gradient(135deg, #334155 0%, #475569 100%);
+      color: #f1f5f9;
+      border: 1px solid #64748b;
+    }
+    .tile-4 {
+      background: linear-gradient(135deg, #0e7490 0%, #06b6d4 100%);
+      color: #ffffff;
+      border: 1px solid #22d3ee;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+    }
+    .tile-8 {
+      background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+      color: #ffffff;
+      border: 1px solid #818cf8;
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.35);
+    }
+    .tile-16 {
+      background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
+      color: #ffffff;
+      border: 1px solid #f87171;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+    }
+    .tile-32 {
+      background: linear-gradient(135deg, #047857 0%, #10b981 100%);
+      color: #ffffff;
+      border: 1px solid #34d399;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.4);
+    }
+    .tile-64 {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+      color: #ffffff;
+      border: 1px solid #fbbf24;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.45);
+    }
+    .tile-128 {
+      background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+      color: #ffffff;
+      border: 1px solid #fdba74;
+      box-shadow: 0 0 22px rgba(234, 88, 12, 0.5);
+    }
+    .tile-256 {
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+      color: #ffffff;
+      border: 1px solid #c084fc;
+      box-shadow: 0 0 24px rgba(168, 85, 247, 0.55);
+    }
+    .tile-512 {
+      background: linear-gradient(135deg, #be185d 0%, #ec4899 100%);
+      color: #ffffff;
+      border: 1px solid #f472b6;
+      box-shadow: 0 0 26px rgba(236, 72, 153, 0.6);
+    }
+    .tile-1024 {
+      background: radial-gradient(circle, #581c87 0%, #1e1b4b 100%);
+      color: #38bdf8;
+      border: 2px solid #818cf8;
+      box-shadow: 0 0 30px rgba(129, 140, 248, 0.7);
+    }
+    .tile-2048 {
+      background: linear-gradient(135deg, #f43f5e 0%, #8b5cf6 50%, #06b6d4 100%);
+      color: #ffffff;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 35px rgba(244, 63, 94, 0.8), 0 0 15px rgba(6, 182, 212, 0.8);
+      animation: supernova-glow 2s infinite alternate;
+    }
+    .tile-super {
+      background: linear-gradient(45deg, #ff007f, #7928ca, #00dfd8);
+      color: #ffffff;
+      box-shadow: 0 0 40px #ff007f;
+      animation: supernova-glow 1.5s infinite alternate;
+    }
+
+    @keyframes supernova-glow {
+      0% { filter: brightness(1) drop-shadow(0 0 10px #ec4899); }
+      100% { filter: brightness(1.25) drop-shadow(0 0 25px #06b6d4); }
+    }
+
+    /* Spawn / Merge Animations */
+    .tile-new {
+      animation: spawn-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .tile-merged {
+      animation: merge-pulse 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 20;
+    }
+
+    @keyframes spawn-pop {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes merge-pulse {
+      0% { transform: scale(0.85); }
+      50% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    /* Screen Shake */
+    .screen-shake {
+      animation: shake 0.25s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+      40%, 60% { transform: translate3d(3px, 0, 0); }
+    }
+
+    /* Modal Dialogs (How-to-play & Game Over) */
+    .overlay-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 11, 22, 0.88);
+      backdrop-filter: blur(10px);
+      border-radius: 18px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      z-index: 50;
+      animation: modal-fade 0.25s ease-out;
+    }
+
+    .overlay-modal.active {
+      display: flex;
+    }
+
+    @keyframes modal-fade {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .overlay-modal h2 {
+      font-size: 1.85rem;
+      margin-bottom: 8px;
+    }
+
+    .overlay-modal p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.45;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+
+    /* Footer Navigation */
+    footer {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .badges-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.72rem;
+    }
+
+    @media (max-width: 420px) {
+      .logo-box h1 { font-size: 1.5rem; }
+      .tile .tile-val { font-size: 1.05rem; }
+      .tile .tile-icon { font-size: 0.95rem; }
+      .tile .tile-name { font-size: 0.48rem; }
+      .score-badge { min-width: 68px; padding: 4px 8px; }
+      .score-badge .val { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Particle Stars -->
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="container" id="app">
+    
+    <!-- Top Header Bar -->
+    <header>
+      <div class="logo-box">
+        <h1>✨ Stellar 2048</h1>
+        <p>Cosmic Celestial Fusion</p>
+      </div>
+      <div class="scores-row">
+        <div class="score-badge">
+          <div class="label">Score</div>
+          <div class="val" id="score-display">0</div>
+        </div>
+        <div class="score-badge best">
+          <div class="label">Best</div>
+          <div class="val" id="best-score-display">0</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+      <div class="btn-group">
+        <button class="btn" id="sound-btn" title="Toggle Sound">🔊 Sound</button>
+        <button class="btn" id="help-btn" title="How to Play">❓ Rules</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn" id="undo-btn" title="Undo Move">↩️ Undo</button>
+        <button class="btn btn-primary" id="restart-btn" title="New Game">🔄 Reset</button>
+      </div>
+    </div>
+
+    <!-- 4x4 Game Grid -->
+    <div class="grid-wrapper" id="grid-wrapper">
+      <!-- 16 Static Background Grid Cells -->
+      <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+      <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+      <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+      <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+
+      <!-- Moving Dynamic Tile Layers -->
+      <div class="tile-container" id="tile-container"></div>
+
+      <!-- Game Over Overlay -->
+      <div class="overlay-modal" id="game-over-modal">
+        <h2 style="color: #f87171;">🌌 Grid Stagnation</h2>
+        <p>No valid orbital fusion trajectories remaining! Your celestial empire achieved:</p>
+        <div class="score-badge" style="margin-bottom: 20px; min-width: 130px;">
+          <div class="label">Final Score</div>
+          <div class="val" id="final-score-val">0</div>
+        </div>
+        <button class="btn btn-primary" id="modal-restart-btn" style="padding: 10px 24px; font-size: 1rem;">🚀 Ignite New Universe</button>
+      </div>
+
+      <!-- Supernova 2048 Victory Overlay -->
+      <div class="overlay-modal" id="victory-modal">
+        <h2 style="color: #38bdf8;">💥 Cosmic Supernova!</h2>
+        <p>Magnificent! You fused celestial matter to achieve the legendary 2048 Supernova Singularity!</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="continue-btn">✨ Continue Fusing</button>
+          <button class="btn" id="victory-restart-btn">🔄 New Genesis</button>
+        </div>
+      </div>
+
+      <!-- How to Play / Celestial Rules Modal -->
+      <div class="overlay-modal" id="rules-modal">
+        <h2 style="color: #c084fc;">🪐 Celestial Codex</h2>
+        <p>Swipe or press Arrow / WASD keys. Colliding twin celestial bodies fuse into higher energy stars!</p>
+        <div class="legend-grid">
+          <div class="legend-item"><span>🌑 2</span> Micro Asteroid</div>
+          <div class="legend-item"><span>☄️ 4</span> Comet Core</div>
+          <div class="legend-item"><span>🌙 8</span> Lunar Moon</div>
+          <div class="legend-item"><span>🔴 16</span> Mars Planet</div>
+          <div class="legend-item"><span>🌍 32</span> Gaia World</div>
+          <div class="legend-item"><span>🪐 64</span> Ringed Titan</div>
+          <div class="legend-item"><span>☀️ 128</span> Solar Flare</div>
+          <div class="legend-item"><span>⚡ 256</span> Plasma Pulsar</div>
+          <div class="legend-item"><span>🌌 512</span> Nebula Void</div>
+          <div class="legend-item"><span>🕳️ 1024</span> Black Hole</div>
+          <div class="legend-item" style="grid-column: span 2; justify-content: center; background: rgba(99, 102, 241, 0.2);">
+            <span>💥 2048</span> <strong>Supernova Singularity</strong>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="close-rules-btn" style="padding: 8px 24px;">Got It, Let's Play!</button>
+      </div>
+
+    </div>
+
+    <!-- Footer Info -->
+    <footer>
+      <div class="badges-row">
+        <span class="badge">Pure Vanilla JS</span>
+        <span class="badge">Web Audio Synth</span>
+        <span class="badge">Touch & Keys</span>
+        <span class="badge">Auto-Saved</span>
+      </div>
+      <p>Use Arrow Keys, WASD, or Touch Swipe to merge stars</p>
+    </footer>
+
+  </div>
+
+  <script>
+    /* =========================================================
+       STELLAR MERGE 2048 — FULL VANILLA ENGINE
+       ========================================================= */
+
+    // Celestial Bodies Metadata
+    const CELESTIAL_DATA = {
+      2:    { icon: "🌑", name: "Asteroid", class: "tile-2" },
+      4:    { icon: "☄️", name: "Comet",    class: "tile-4" },
+      8:    { icon: "🌙", name: "Moon",     class: "tile-8" },
+      16:   { icon: "🔴", name: "Mars",     class: "tile-16" },
+      32:   { icon: "🌍", name: "Gaia",     class: "tile-32" },
+      64:   { icon: "🪐", name: "Titan",    class: "tile-64" },
+      128:  { icon: "☀️", name: "Solar",    class: "tile-128" },
+      256:  { icon: "⚡", name: "Pulsar",   class: "tile-256" },
+      512:  { icon: "🌌", name: "Nebula",   class: "tile-512" },
+      1024: { icon: "🕳️", name: "Singularity", class: "tile-1024" },
+      2048: { icon: "💥", name: "Supernova", class: "tile-2048" },
+      4096: { icon: "♾️", name: "Hyper Void", class: "tile-super" },
+      8192: { icon: "👑", name: "Omniverse",  class: "tile-super" }
+    };
+
+    // Web Audio Synthesizer (Zero External Audio Files)
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return !this.muted;
+      }
+
+      playSlide() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        } catch (e) {}
+      }
+
+      playMerge(val) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          // Pitch scales with tile value
+          const tier = Math.log2(val) || 1;
+          const baseFreq = 260 + (tier * 48);
+          const now = this.ctx.currentTime;
+
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+
+          osc1.frequency.setValueAtTime(baseFreq, now);
+          osc1.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.14);
+
+          osc2.frequency.setValueAtTime(baseFreq * 1.25, now);
+          osc2.frequency.exponentialRampToValueAtTime(baseFreq * 2, now + 0.16);
+
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.18);
+          osc2.stop(now + 0.18);
+        } catch (e) {}
+      }
+
+      playVictory() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+          const now = this.ctx.currentTime;
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+            gain.gain.setValueAtTime(0.15, now + idx * 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.09);
+            osc.stop(now + idx * 0.09 + 0.35);
+          });
+        } catch (e) {}
+      }
+
+      playGameOver() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const notes = [311.13, 293.66, 277.18, 261.63];
+          const now = this.ctx.currentTime;
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            gain.gain.setValueAtTime(0.08, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.25);
+          });
+        } catch (e) {}
+      }
+    }
+
+    // Main 2048 Game Board Logic
+    class StellarGame {
+      constructor() {
+        this.size = 4;
+        this.grid = [];
+        this.score = 0;
+        this.bestScore = parseInt(localStorage.getItem('stellar_merge_2048_best') || '0', 10);
+        this.previousState = null;
+        this.hasWon = false;
+        this.keepPlaying = false;
+        this.sound = new SoundEngine();
+        this.tileContainer = document.getElementById('tile-container');
+        this.gridWrapper = document.getElementById('grid-wrapper');
+        this.scoreDisplay = document.getElementById('score-display');
+        this.bestScoreDisplay = document.getElementById('best-score-display');
+        this.gameOverModal = document.getElementById('game-over-modal');
+        this.victoryModal = document.getElementById('victory-modal');
+        this.rulesModal = document.getElementById('rules-modal');
+        this.finalScoreVal = document.getElementById('final-score-val');
+        this.soundBtn = document.getElementById('sound-btn');
+
+        this.initGrid();
+        this.setupEventListeners();
+        this.updateBestScoreDisplay();
+        this.startNewGame();
+      }
+
+      initGrid() {
+        this.grid = Array(this.size).fill(null).map(() => Array(this.size).fill(0));
+      }
+
+      saveStateForUndo() {
+        this.previousState = {
+          grid: this.grid.map(row => [...row]),
+          score: this.score,
+          hasWon: this.hasWon
+        };
+      }
+
+      undo() {
+        if (!this.previousState) return;
+        this.grid = this.previousState.grid.map(row => [...row]);
+        this.score = this.previousState.score;
+        this.hasWon = this.previousState.hasWon;
+        this.previousState = null;
+        this.renderTiles();
+        this.updateScoreDisplay();
+        this.gameOverModal.classList.remove('active');
+      }
+
+      startNewGame() {
+        this.initGrid();
+        this.score = 0;
+        this.hasWon = false;
+        this.keepPlaying = false;
+        this.previousState = null;
+        this.gameOverModal.classList.remove('active');
+        this.victoryModal.classList.remove('active');
+        this.updateScoreDisplay();
+
+        // Spawn initial 2 celestial bodies
+        this.spawnRandomTile();
+        this.spawnRandomTile();
+        this.renderTiles(true);
+      }
+
+      spawnRandomTile() {
+        const emptyCells = [];
+        for (let r = 0; r < this.size; r++) {
+          for (let c = 0; c < this.size; c++) {
+            if (this.grid[r][c] === 0) {
+              emptyCells.push({ r, c });
+            }
+          }
+        }
+        if (emptyCells.length === 0) return null;
+        const cell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        // 90% chance of 2 (Asteroid), 10% chance of 4 (Comet)
+        const value = Math.random() < 0.9 ? 2 : 4;
+        this.grid[cell.r][cell.c] = value;
+        return { r: cell.r, c: cell.c, value, isNew: true };
+      }
+
+      // Movement & Fusion Algorithms
+      move(direction) {
+        // 0: Up, 1: Right, 2: Down, 3: Left
+        this.sound.init();
+        const rotated = this.rotateGrid(direction);
+        let moved = false;
+        let scoreGained = 0;
+        let highestMerged = 0;
+
+        const newGrid = [];
+
+        for (let r = 0; r < this.size; r++) {
+          const row = rotated[r].filter(val => val !== 0);
+          const newRow = [];
+
+          for (let c = 0; c < row.length; c++) {
+            if (c + 1 < row.length && row[c] === row[c + 1]) {
+              const mergedVal = row[c] * 2;
+              newRow.push(mergedVal);
+              scoreGained += mergedVal;
+              if (mergedVal > highestMerged) highestMerged = mergedVal;
+              c++; // skip next merged tile
+            } else {
+              newRow.push(row[c]);
+            }
+          }
+
+          while (newRow.length < this.size) {
+            newRow.push(0);
+          }
+
+          // Check if this row changed
+          for (let c = 0; c < this.size; c++) {
+            if (newRow[c] !== rotated[r][c]) {
+              moved = true;
+            }
+          }
+
+          newGrid.push(newRow);
+        }
+
+        if (moved) {
+          this.saveStateForUndo();
+          this.grid = this.unrotateGrid(newGrid, direction);
+          this.score += scoreGained;
+          this.updateScoreDisplay();
+
+          if (highestMerged >= 128) {
+            this.triggerScreenShake();
+          }
+
+          if (highestMerged > 0) {
+            this.sound.playMerge(highestMerged);
+          } else {
+            this.sound.playSlide();
+          }
+
+          const spawned = this.spawnRandomTile();
+          this.renderTiles(false, spawned, highestMerged);
+
+          // Check Supernova 2048 Victory
+          if (!this.hasWon && !this.keepPlaying && this.containsTile(2048)) {
+            this.hasWon = true;
+            this.sound.playVictory();
+            setTimeout(() => {
+              this.victoryModal.classList.add('active');
+            }, 300);
+          }
+
+          // Check Game Over
+          if (!this.canMove()) {
+            this.sound.playGameOver();
+            this.finalScoreVal.textContent = this.score;
+            setTimeout(() => {
+              this.gameOverModal.classList.add('active');
+            }, 400);
+          }
+        }
+      }
+
+      rotateGrid(direction) {
+        // Rotate grid so sliding is always leftwards
+        // 0: Up (counter-clockwise 90), 1: Right (180), 2: Down (clockwise 90), 3: Left (0)
+        let g = this.grid.map(row => [...row]);
+        if (direction === 0) {
+          // Up: transpose & reverse rows
+          g = this.transpose(g);
+        } else if (direction === 1) {
+          // Right: reverse rows
+          g = g.map(row => [...row].reverse());
+        } else if (direction === 2) {
+          // Down: transpose & reverse columns
+          g = this.transpose(g).map(row => [...row].reverse());
+        }
+        return g;
+      }
+
+      unrotateGrid(g, direction) {
+        if (direction === 0) {
+          g = this.transpose(g);
+        } else if (direction === 1) {
+          g = g.map(row => [...row].reverse());
+        } else if (direction === 2) {
+          g = this.transpose(g.map(row => [...row].reverse()));
+        }
+        return g;
+      }
+
+      transpose(matrix) {
+        return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+      }
+
+      containsTile(targetVal) {
+        return this.grid.some(row => row.some(val => val === targetVal));
+      }
+
+      canMove() {
+        // Check for empty cell
+        for (let r = 0; r < this.size; r++) {
+          for (let c = 0; c < this.size; c++) {
+            if (this.grid[r][c] === 0) return true;
+          }
+        }
+        // Check horizontal & vertical adjacent matches
+        for (let r = 0; r < this.size; r++) {
+          for (let c = 0; c < this.size; c++) {
+            const current = this.grid[r][c];
+            if (r + 1 < this.size && this.grid[r + 1][c] === current) return true;
+            if (c + 1 < this.size && this.grid[r][c + 1] === current) return true;
+          }
+        }
+        return false;
+      }
+
+      // UI Rendering
+      renderTiles(isInitial = false, spawnedCell = null, mergedVal = 0) {
+        this.tileContainer.innerHTML = '';
+        const gap = 10;
+
+        for (let r = 0; r < this.size; r++) {
+          for (let c = 0; c < this.size; c++) {
+            const val = this.grid[r][c];
+            if (val === 0) continue;
+
+            const tile = document.createElement('div');
+            const data = CELESTIAL_DATA[val] || { icon: "✨", name: "Star", class: "tile-super" };
+            tile.className = `tile ${data.class}`;
+
+            if (spawnedCell && spawnedCell.r === r && spawnedCell.c === c) {
+              tile.classList.add('tile-new');
+            } else if (mergedVal > 0 && val >= mergedVal) {
+              tile.classList.add('tile-merged');
+            }
+
+            // Grid coordinate calculations (percentage based for responsive scaling)
+            const leftPercent = (c * 25);
+            const topPercent = (r * 25);
+            tile.style.left = `calc(${leftPercent}% + ${c > 0 ? (gap * c / 4) : 0}px)`;
+            tile.style.top = `calc(${topPercent}% + ${r > 0 ? (gap * r / 4) : 0}px)`;
+
+            tile.innerHTML = `
+              <span class="tile-icon">${data.icon}</span>
+              <span class="tile-val">${val}</span>
+              <span class="tile-name">${data.name}</span>
+            `;
+
+            this.tileContainer.appendChild(tile);
+          }
+        }
+      }
+
+      triggerScreenShake() {
+        this.gridWrapper.classList.remove('screen-shake');
+        void this.gridWrapper.offsetWidth; // trigger reflow
+        this.gridWrapper.classList.add('screen-shake');
+        setTimeout(() => {
+          this.gridWrapper.classList.remove('screen-shake');
+        }, 250);
+      }
+
+      updateScoreDisplay() {
+        this.scoreDisplay.textContent = this.score;
+        if (this.score > this.bestScore) {
+          this.bestScore = this.score;
+          localStorage.setItem('stellar_merge_2048_best', this.bestScore.toString());
+          this.updateBestScoreDisplay();
+        }
+      }
+
+      updateBestScoreDisplay() {
+        this.bestScoreDisplay.textContent = this.bestScore;
+      }
+
+      // Input Event Handlers
+      setupEventListeners() {
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+          if (['ArrowUp', 'KeyW'].includes(e.code)) {
+            e.preventDefault();
+            this.move(0);
+          } else if (['ArrowRight', 'KeyD'].includes(e.code)) {
+            e.preventDefault();
+            this.move(1);
+          } else if (['ArrowDown', 'KeyS'].includes(e.code)) {
+            e.preventDefault();
+            this.move(2);
+          } else if (['ArrowLeft', 'KeyA'].includes(e.code)) {
+            e.preventDefault();
+            this.move(3);
+          }
+        });
+
+        // Touch Swipe Controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        this.gridWrapper.addEventListener('touchstart', (e) => {
+          if (e.touches.length > 0) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+          }
+        }, { passive: true });
+
+        this.gridWrapper.addEventListener('touchend', (e) => {
+          if (e.changedTouches.length > 0) {
+            touchEndX = e.changedTouches[0].clientX;
+            touchEndY = e.changedTouches[0].clientY;
+            this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+          }
+        }, { passive: true });
+
+        // Buttons
+        document.getElementById('restart-btn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('modal-restart-btn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('victory-restart-btn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+
+        this.soundBtn.addEventListener('click', () => {
+          const isAudioOn = this.sound.toggleMute();
+          this.soundBtn.textContent = isAudioOn ? '🔊 Sound' : '🔇 Muted';
+        });
+
+        document.getElementById('help-btn').addEventListener('click', () => {
+          this.rulesModal.classList.add('active');
+        });
+
+        document.getElementById('close-rules-btn').addEventListener('click', () => {
+          this.rulesModal.classList.remove('active');
+        });
+
+        document.getElementById('continue-btn').addEventListener('click', () => {
+          this.victoryModal.classList.remove('active');
+          this.keepPlaying = true;
+        });
+      }
+
+      handleSwipe(startX, startY, endX, endY) {
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
+        const minSwipeDistance = 30;
+
+        if (Math.max(absX, absY) < minSwipeDistance) return;
+
+        if (absX > absY) {
+          // Horizontal Swipe
+          if (dx > 0) {
+            this.move(1); // Right
+          } else {
+            this.move(3); // Left
+          }
+        } else {
+          // Vertical Swipe
+          if (dy > 0) {
+            this.move(2); // Down
+          } else {
+            this.move(0); // Up
+          }
+        }
+      }
+    }
+
+    // Ambient Starfield Canvas Animation
+    function setupStarfield() {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      const numStars = 65;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.5 + 0.3,
+          speed: Math.random() * 0.25 + 0.05,
+          alpha: Math.random() * 0.8 + 0.2,
+          color: ['#38bdf8', '#c084fc', '#f472b6', '#ffffff'][Math.floor(Math.random() * 4)]
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let star of stars) {
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = star.alpha;
+          ctx.fill();
+
+          star.y -= star.speed;
+          if (star.y < 0) {
+            star.y = canvas.height;
+            star.x = Math.random() * canvas.width;
+          }
+        }
+        ctx.globalAlpha = 1.0;
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    // Launch Game on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      setupStarfield();
+      window.gameInstance = new StellarGame();
+    });
+  </script>
+</body>
+</html>
